@@ -1,0 +1,5 @@
+{
+  "name": "NutriScan Pro",
+  "description": "AI-powered nutrient estimation from food photos for personal trainers and nutritionists.",
+  "requestFramePermissions": ["camera"]
+}

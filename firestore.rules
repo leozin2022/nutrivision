@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (uid)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - displayName: string (optional)
+    //   - role: string (required, enum: nutritionist, trainer, client)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: meals
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required, matches owner)
+    //   - imageUrl: string (required)
+    //   - analysis: map (required, nutrient data)
+    //   - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return data.uid is string && data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.role in ['nutritionist', 'trainer', 'client'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidMeal(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.imageUrl is string && data.imageUrl.size() < 2000 &&
+             data.analysis is map &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      request.resource.data.role == resource.data.role; // Role immutable for user
+    }
+
+    match /meals/{mealId} {
+      allow read: if isAuthenticated() && (isDocOwner() || 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['nutritionist', 'trainer']);
+      allow create: if isAuthenticated() && isValidMeal(request.resource.data);
+      allow update: if isDocOwner() && isValidMeal(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

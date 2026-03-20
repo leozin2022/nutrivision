@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID" },
+        "email": { "type": "string", "format": "email", "description": "User's email" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "role": { "type": "string", "enum": ["nutritionist", "trainer", "client"], "description": "User's role" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Meal": {
+      "title": "Meal",
+      "description": "Meal analysis record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who logged the meal" },
+        "imageUrl": { "type": "string", "description": "URL of the meal photo" },
+        "analysis": {
+          "type": "object",
+          "properties": {
+            "foodItems": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "quantity": { "type": "string" },
+                  "calories": { "type": "number" },
+                  "protein": { "type": "number" },
+                  "carbs": { "type": "number" },
+                  "fat": { "type": "number" }
+                }
+              }
+            },
+            "totalCalories": { "type": "number" },
+            "totalProtein": { "type": "number" },
+            "totalCarbs": { "type": "number" },
+            "totalFat": { "type": "number" },
+            "summary": { "type": "string" }
+          }
+        },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the meal was logged" }
+      },
+      "required": ["userId", "imageUrl", "analysis", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/meals/{mealId}": {
+      "schema": "Meal",
+      "description": "Logged meals and their nutrient analysis"
+    }
+  }
+}
